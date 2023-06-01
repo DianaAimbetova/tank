@@ -11,6 +11,9 @@ Y_PIXEL = 70
 X_PIXEL_BLOCK = 44
 Y_PIXEL_BLOCK = 62
 
+X_PIXEL_BULLET = 12
+Y_PIXEL_BULLET = 26
+
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 pygame.display.set_caption('Tanks')
@@ -22,6 +25,12 @@ imageBangs = [pygame.image.load('PNG/Smoke/smokeGrey0.png'),
               pygame.image.load('PNG/Smoke/smokeOrange0.png'),
               pygame.image.load('PNG/Smoke/smokeWhite0.png')]
 
+imageBullets = [pygame.image.load('PNG/Bullets/bulletBlue.png'),
+                pygame.image.load('PNG/Bullets/bulletGreen.png')]
+
+imageHealths = [pygame.image.load('PNG/health/blue-heart.png'),
+                pygame.image.load('PNG/health/green-heart.png')]
+
 pygame.mixer.music.load('Sounds/fon.mp3')
 pygame.mixer.music.play()
 
@@ -30,6 +39,8 @@ touch = pygame.mixer.Sound('Sounds/Touch.wav')
 fail = pygame.mixer.Sound('Sounds/fail.mp3')
 
 DIRECTS = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+
+game_state = "start_menu"
 
 
 class Tank:
@@ -116,6 +127,8 @@ class Tank:
             objects.remove(self)
             print(self.color, self.type, 'dead')
             fail.play()
+            global game_state
+            game_state = "game_over"
 
 
 class Bullet:
@@ -128,7 +141,12 @@ class Bullet:
         self.damage = damage
         self.parent = parent
 
+        self.image = pygame.transform.rotate(imageBullets[self.parent.order - 1], -self.parent.direct * 90)
+        self.rect = self.image.get_rect(center=self.parent.rect.center)
+
     def update(self):
+        self.image = pygame.transform.rotate(imageBullets[self.parent.order - 1], -self.parent.direct * 90)
+        self.rect = self.image.get_rect(center=(self.px, self.py))
         self.px += self.dx
         self.py += self.dy
 
@@ -138,7 +156,7 @@ class Bullet:
         else:
             for obj in objects:
                 # if bullet hits the object and its not the same object where bullet starts
-                if obj != self.parent and obj.rect.collidepoint(self.px, self.py):
+                if obj != self.parent and obj.type != 'smoke' and obj.rect.collidepoint(self.px, self.py):
                     obj.damage(self.damage)
                     bullets.remove(self)
                     Smoke(self.px, self.py)
@@ -146,7 +164,8 @@ class Bullet:
                     break
 
     def draw(self):
-        pygame.draw.circle(window, 'yellow', (self.px, self.py), 2)
+        # pygame.draw.circle(window, 'yellow', (self.px, self.py), 2)
+        window.blit(self.image, self.rect)
 
 
 class Block:
@@ -183,7 +202,8 @@ class Interface:
         i = 0
         for obj in objects:
             if obj.type == 'tank':
-                pygame.draw.rect(window, obj.color, pygame.Rect(5 + i * 70, 5, 25, 25))
+                window.blit(imageHealths[obj.order-1], pygame.Rect(5 + i * 70, 5, 24, 24))
+                #pygame.draw.rect(window, obj.color, pygame.Rect(5 + i * 70, 5, 25, 25))
                 text = font.render(str(obj.health), 1, obj.color)
                 rect = text.get_rect(center=(5 + i * 70 + 32, 5 + 11))
                 window.blit(text, rect)
@@ -205,7 +225,7 @@ class Smoke:
 
     def draw(self):
         image = imageBangs[int(self.frame)]
-        rect = image.get_rect(center = (self.x, self.y))
+        rect = image.get_rect(center=(self.x, self.y))
         window.blit(image, rect)
 
 
@@ -213,7 +233,7 @@ bullets = []
 objects = []
 
 Tank('blue', 100, 275, 0, (pygame.K_a, pygame.K_d, pygame.K_w, pygame.K_s, pygame.K_SPACE), 1)
-Tank('green', 650, 275, 0, (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_DELETE), 2)
+Tank('green', 650, 275, 0, (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_INSERT), 2)
 interface = Interface()
 
 for _ in range(50):
@@ -228,31 +248,72 @@ for _ in range(50):
         if not fined: break
     Block(x, y, X_PIXEL_BLOCK, Y_PIXEL_BLOCK)
 
+
+def draw_start_menu():
+    window.fill((0, 0, 0))
+    font = pygame.font.SysFont('arial', 40)
+    title = font.render('My Game', True, (255, 255, 255))
+    start_button = font.render('Start(press button S)', True, (255, 255, 255))
+    window.blit(title, (WIDTH / 2 - title.get_width() / 2, HEIGHT / 2 - title.get_height() / 2))
+    window.blit(start_button,
+                (WIDTH / 2 - start_button.get_width() / 2, HEIGHT / 2 + start_button.get_height() / 2))
+    pygame.display.update()
+
+
+def draw_game_over_screen():
+    window.fill((0, 0, 0))
+    font = pygame.font.SysFont('arial', 40)
+    title = font.render('Game Over', True, (255, 255, 255))
+    #restart_button = font.render('R - Restart', True, (255, 255, 255))
+    quit_button = font.render('Q - Quit', True, (255, 255, 255))
+    window.blit(title, (WIDTH / 2 - title.get_width() / 2, HEIGHT / 2 - title.get_height() / 3))
+    #window.blit(restart_button,
+                #(WIDTH / 2 - restart_button.get_width() / 2, HEIGHT / 1.9 + restart_button.get_height()))
+    window.blit(quit_button,
+                (WIDTH / 2 - quit_button.get_width() / 2, HEIGHT / 2 + quit_button.get_height() / 2))
+    pygame.display.update()
+
+
 play = True
 while play:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             play = False
+    if game_state == "start_menu":
+        draw_start_menu()
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_s]:
+            game_state = "game"
+            game_over = False
+    elif game_state == "game_over":
+        draw_game_over_screen()
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_r]:
+            game_state = "start_menu"
+        if keys[pygame.K_q]:
+            pygame.quit()
+            quit()
+    elif game_state == "game":
+        keys = pygame.key.get_pressed()
 
-    keys = pygame.key.get_pressed()
+        for bullet in bullets:
+            bullet.update()
 
-    for bullet in bullets:
-        bullet.update()
+        for obj in objects:
+            obj.update()
 
-    for obj in objects:
-        obj.update()
+        interface.update()
 
-    interface.update()
+        window.fill('black')
+        for obj in objects:
+            obj.draw()
+        for bullet in bullets:
+            bullet.draw()
 
-    window.fill('black')
-    for obj in objects:
-        obj.draw()
-    for bullet in bullets:
-        bullet.draw()
+        interface.draw()
 
-    interface.draw()
-
-    pygame.display.update()
-    clock.tick(FPS)
-
-pygame.quit()
+        pygame.display.update()
+        clock.tick(FPS)
+    elif game_over:
+        game_state = "game_over"
+        game_over = False
