@@ -1,5 +1,9 @@
+import sys
+
 import pygame
 from random import randint
+
+from pygame import KEYDOWN
 
 pygame.init()
 
@@ -41,6 +45,7 @@ fail = pygame.mixer.Sound('Sounds/fail.mp3')
 DIRECTS = [[0, -1], [1, 0], [0, 1], [-1, 0]]
 
 game_state = "start_menu"
+music_on = True
 
 
 class Tank:
@@ -86,6 +91,9 @@ class Tank:
         if keys[self.keyDown]:
             self.rect.y += self.moveSpeed
             self.direct = 2
+        if keys[pygame.K_BACKSPACE]:
+            global game_state
+            game_state = 'pause'
 
         # if tank meets block
         for obj in objects:
@@ -93,14 +101,16 @@ class Tank:
                 if self.rect.colliderect(obj.rect):
                     self.rect.x = oldX
                     self.rect.y = oldY
-                    touch.play()
+                    if music_on:
+                        touch.play()
 
         # if tanks goes to out of border
         if self.rect.y <= 0 or self.rect.x <= 0 or self.rect.y >= HEIGHT - rect.size[0] or self.rect.x >= WIDTH - \
                 rect.size[1]:
             self.rect.x = oldX
             self.rect.y = oldY
-            touch.play()
+            if music_on:
+                touch.play()
 
         # delays in shoots
         if keys[self.keyShoot] and self.shotTimer == 0:
@@ -126,7 +136,8 @@ class Tank:
         if self.health <= 0:
             objects.remove(self)
             print(self.color, self.type, 'dead')
-            fail.play()
+            if music_on:
+                fail.play()
             global game_state
             game_state = "game_over"
 
@@ -160,7 +171,8 @@ class Bullet:
                     obj.damage(self.damage)
                     bullets.remove(self)
                     Smoke(self.px, self.py)
-                    shout.play()
+                    if music_on:
+                        shout.play()
                     break
 
     def draw(self):
@@ -202,8 +214,8 @@ class Interface:
         i = 0
         for obj in objects:
             if obj.type == 'tank':
-                window.blit(imageHealths[obj.order-1], pygame.Rect(5 + i * 70, 5, 24, 24))
-                #pygame.draw.rect(window, obj.color, pygame.Rect(5 + i * 70, 5, 25, 25))
+                window.blit(imageHealths[obj.order - 1], pygame.Rect(5 + i * 70, 5, 24, 24))
+                # pygame.draw.rect(window, obj.color, pygame.Rect(5 + i * 70, 5, 25, 25))
                 text = font.render(str(obj.health), 1, obj.color)
                 rect = text.get_rect(center=(5 + i * 70 + 32, 5 + 11))
                 window.blit(text, rect)
@@ -233,7 +245,7 @@ bullets = []
 objects = []
 
 Tank('blue', 100, 275, 0, (pygame.K_a, pygame.K_d, pygame.K_w, pygame.K_s, pygame.K_SPACE), 1)
-Tank('green', 650, 275, 0, (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_INSERT), 2)
+Tank('green', 650, 275, 0, (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_RETURN), 2)
 interface = Interface()
 
 for _ in range(50):
@@ -253,10 +265,29 @@ def draw_start_menu():
     window.fill((0, 0, 0))
     font = pygame.font.SysFont('arial', 40)
     title = font.render('My Game', True, (255, 255, 255))
-    start_button = font.render('Start(press button S)', True, (255, 255, 255))
+    start_button = font.render('Start (Any Key)', True, (255, 255, 255))
+    music_button = font.render('M - Music (On/Off)', True, (255, 255, 255))
     window.blit(title, (WIDTH / 2 - title.get_width() / 2, HEIGHT / 2 - title.get_height() / 2))
     window.blit(start_button,
                 (WIDTH / 2 - start_button.get_width() / 2, HEIGHT / 2 + start_button.get_height() / 2))
+    window.blit(music_button,
+                (WIDTH / 2 - music_button.get_width() / 2,
+                 HEIGHT / 2 + start_button.get_height() + music_button.get_height() / 2))
+    pygame.display.update()
+
+
+def draw_restart_menu():
+    window.fill((0, 0, 0))
+    font = pygame.font.SysFont('arial', 40)
+    title = font.render('My Game', True, (255, 255, 255))
+    start_button = font.render('Unpause', True, (255, 255, 255))
+    music_button = font.render('M - Music (On/Off)', True, (255, 255, 255))
+    window.blit(title, (WIDTH / 2 - title.get_width() / 2, HEIGHT / 2 - title.get_height() / 2))
+    window.blit(start_button,
+                (WIDTH / 2 - start_button.get_width() / 2, HEIGHT / 2 + start_button.get_height() / 2))
+    window.blit(music_button,
+                (WIDTH / 2 - music_button.get_width() / 2,
+                 HEIGHT / 2 + start_button.get_height() + music_button.get_height() / 2))
     pygame.display.update()
 
 
@@ -264,27 +295,37 @@ def draw_game_over_screen():
     window.fill((0, 0, 0))
     font = pygame.font.SysFont('arial', 40)
     title = font.render('Game Over', True, (255, 255, 255))
-    #restart_button = font.render('R - Restart', True, (255, 255, 255))
+    # restart_button = font.render('R - Restart', True, (255, 255, 255))
     quit_button = font.render('Q - Quit', True, (255, 255, 255))
     window.blit(title, (WIDTH / 2 - title.get_width() / 2, HEIGHT / 2 - title.get_height() / 3))
-    #window.blit(restart_button,
-                #(WIDTH / 2 - restart_button.get_width() / 2, HEIGHT / 1.9 + restart_button.get_height()))
+    # window.blit(restart_button,
+    # (WIDTH / 2 - restart_button.get_width() / 2, HEIGHT / 1.9 + restart_button.get_height()))
     window.blit(quit_button,
                 (WIDTH / 2 - quit_button.get_width() / 2, HEIGHT / 2 + quit_button.get_height() / 2))
     pygame.display.update()
 
 
-play = True
-while play:
+game_over = False
+while not game_over:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            play = False
+            pygame.quit()
+            sys.exit()
     if game_state == "start_menu":
         draw_start_menu()
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_s]:
+        key_down_event_list = pygame.event.get(KEYDOWN)
+        general_event_list = pygame.event.get()
+        if len(key_down_event_list) != 0:
             game_state = "game"
             game_over = False
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_m]:
+                if music_on:
+                    music_on = False
+                    pygame.mixer_music.stop()
+                else:
+                    music_on = True
+                    pygame.mixer_music.play()
     elif game_state == "game_over":
         draw_game_over_screen()
         keys = pygame.key.get_pressed()
@@ -292,7 +333,7 @@ while play:
             game_state = "start_menu"
         if keys[pygame.K_q]:
             pygame.quit()
-            quit()
+            sys.exit()
     elif game_state == "game":
         keys = pygame.key.get_pressed()
 
@@ -314,6 +355,18 @@ while play:
 
         pygame.display.update()
         clock.tick(FPS)
+    elif game_state == 'pause':
+        draw_restart_menu()
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_m]:
+            if music_on:
+                music_on = False
+                pygame.mixer_music.stop()
+            else:
+                music_on = True
+                pygame.mixer_music.play()
+        if keys[pygame.K_RETURN]:
+            game_state = 'game'
     elif game_over:
         game_state = "game_over"
         game_over = False
